@@ -13,7 +13,5 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: configure
-      run: ./configure
-    - name: make
-      run: make install && make test
+    - name: test
+      run: make install && LD_LIBRARY_PATH=$LD_LIBRARY_PATH:. make test
