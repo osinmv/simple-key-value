@@ -1,0 +1,9 @@
+BasedOnStyle: Microsoft
+BraceWrapping:
+    AfterControlStatement: Never
+    AfterEnum: false
+    AfterStruct: false
+    BeforeCatch: false
+    BeforeElse: false
+PointerAlignment: Left
+
