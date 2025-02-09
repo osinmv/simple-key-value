@@ -124,7 +124,7 @@ int store_destroy(struct store* kv)
 {
     struct bucket* tmp;
     struct bucket* next;
-    for (size_t i = 0; i < kv->count; i++) {
+    for (size_t i = 0; i < kv->store_size; i++) {
         if (kv->buckets[i].value != NULL)
             _store_free_bucket(&kv->buckets[i], false);
         next = kv->buckets[i].next;
