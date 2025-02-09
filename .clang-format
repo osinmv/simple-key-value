@@ -6,4 +6,4 @@ BraceWrapping:
     BeforeCatch: false
     BeforeElse: false
 PointerAlignment: Left
-
+Cpp11BracedListStyle: false
