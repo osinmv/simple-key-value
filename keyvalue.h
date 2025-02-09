@@ -1,13 +1,18 @@
 #define DEFAULT_SIZE 16
 #define DEFAULT_LOAD_FACTOR 70
 #define DEFAULT_MEM_LIMIT 32
-struct value {
-    struct value* next;
-    char* value;
-    char* key;
+struct bucket {
+    struct bucket* next;
+    struct container* value;
+    struct container* key;
+};
+
+struct container {
+    int size;
+    char* data;
 };
 struct store {
-    struct value* buckets;
+    struct bucket* buckets;
     unsigned long count;
     unsigned int store_size;
     int load_factor;
@@ -20,9 +25,9 @@ enum STORE_ERROR {
     DELETEERR = -4
 };
 struct store* store_init();
-unsigned long _hash(char* key);
-int store_insert(struct store* kv, char* key, char* value);
-int store_remove(struct store* kv, char* key);
+unsigned long _hash(struct container* key);
+int store_insert(struct store* kv, struct container* key, struct container* value);
+int store_remove(struct store* kv, struct container* key);
 int store_destroy(struct store* kv);
 int _store_resize(struct store* old_kv);
-struct value* store_get(struct store* kv, char* key);
+struct bucket* store_get(struct store* kv, struct container* key);

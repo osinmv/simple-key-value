@@ -1,10 +1,9 @@
 install: keyvalue.c
-	gcc -fPIC -c keyvalue.c -o keyvalue.o
-	gcc -shared -o libkeyvalue.so keyvalue.o
+	gcc -c keyvalue.c -o keyvalue.o
 
 clean:
-	rm keyvalue.o keyvalue_test.o
+	rm keyvalue.o keyvalue_test.o test
 
 
-test: libkeyvalue.so *_test.c
-	 gcc -fsanitize=address -o test keyvalue_test.c -L. -lkeyvalue && ./test
+test: keyvalue.o *_test.c
+	gcc -fsanitize=address keyvalue.c keyvalue_test.c -o test && ./test

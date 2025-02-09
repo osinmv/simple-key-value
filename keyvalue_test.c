@@ -11,27 +11,37 @@ struct test {
 int test_insert()
 {
     struct store* kv = store_init();
-    char* key = (char*)calloc(1, sizeof(char) * 32);
-    char* value = (char*)calloc(1, sizeof(char) * 32);
-    strcpy(key, "super key");
-    strcpy(value, "supervalue");
-    int result = store_insert(kv, key, value);
+    struct container key, value;
+    key.data = (char*)calloc(1, sizeof(char) * 10);
+    key.size = 10;
+    value.data = (char*)calloc(1, sizeof(char) * 11);
+    value.size = 11;
+    strncpy(key.data, "super key", 10);
+    strncpy(value.data, "supervalue", 11);
+    int result = store_insert(kv, &key, &value);
     store_destroy(kv);
+    free(key.data);
+    free(value.data);
     return result;
 }
 int test_get()
 {
     struct store* kv = store_init();
-    char* key = (char*)calloc(1, sizeof(char) * 32);
-    char* value = (char*)calloc(1, sizeof(char) * 32);
-    strcpy(key, "super key");
-    strcpy(value, "supervalue");
-    store_insert(kv, key, value);
-    struct value* val = store_get(kv, key);
+    struct container key, value;
+    key.data = (char*)calloc(1, sizeof(char) * 10);
+    key.size = 10;
+    value.data = (char*)calloc(1, sizeof(char) * 11);
+    value.size = 11;
+    strncpy(key.data, "super key", 10);
+    strncpy(value.data, "supervalue", 11);
+    store_insert(kv, &key, &value);
+    struct bucket* result = store_get(kv, &key);
+    int ret = result != NULL && strncmp(value.data, result->value->data, value.size);
     store_destroy(kv);
-    return -1;
+    free(key.data);
+    free(value.data);
 
-    // return strcmp(val->value, value);
+    return ret;
 }
 int main(int argc, char const* argv[])
 {

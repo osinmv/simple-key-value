@@ -1,55 +1,68 @@
 #include "keyvalue.h"
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
-struct store* store_init()
+struct store* _store_init(int size)
 {
     struct store* kv = (struct store*)calloc(1, sizeof(struct store));
-    kv->store_size = DEFAULT_SIZE;
+    kv->store_size = size;
     kv->load_factor = DEFAULT_LOAD_FACTOR;
-    kv->buckets = (struct value*)calloc(DEFAULT_SIZE, sizeof(struct value));
+    kv->buckets = (struct bucket*)calloc(size, sizeof(struct bucket));
     return kv;
 }
+struct store* store_init()
+{
+    return _store_init(DEFAULT_SIZE);
+}
 // Djb2 hash function
-unsigned long _hash(char* key)
+unsigned long _hash(struct container* key)
 {
     unsigned long hash = 5381;
     int c;
-    while ((c = *key++))
+    for (size_t i = 0; i < key->size; i++) {
+        c = key->data[i];
         hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+    }
     return hash;
 }
 
-// Assumed that value and key will not be freed by anybody else
-int store_insert(struct store* kv, char* key, char* value)
+// Assumed that bucket and key will not be freed by anybody else
+int store_insert(struct store* kv, struct container* key, struct container* value)
 {
     if (kv->count * 100 / kv->store_size >= kv->load_factor) {
         _store_resize(kv);
     }
     unsigned long hsh = _hash(key) % kv->store_size;
-    struct value* bucket = &kv->buckets[hsh];
+    struct bucket* bucket = &kv->buckets[hsh];
     if (bucket->key != NULL) {
         while (bucket->next != NULL) {
             bucket = bucket->next;
         }
     }
-
-    struct value* new = (struct value*)calloc(1, sizeof(struct value));
-    new->key = key;
-    new->value = value;
-    new->next = NULL;
-    bucket->next = new;
+    struct bucket* new;
+    if (bucket != &kv->buckets[hsh]) {
+        new = (struct bucket*)calloc(1, sizeof(struct bucket));
+        bucket->next = new;
+    } else
+        new = &kv->buckets[hsh];
+    new->key = (struct container*)calloc(1, sizeof(struct container));
+    new->value = (struct container*)calloc(1, sizeof(struct container));
+    new->key->data = (char*)calloc(1, key->size);
+    new->value->data = (char*)calloc(1, value->size);
+    new->key->size = key->size;
+    new->value->size = value->size;
+    memcpy(new->key->data, key->data, key->size);
+    memcpy(new->value->data, value->data, value->size);
     kv->count++;
     return 0;
 }
 
 int _store_resize(struct store* old_kv)
 {
-    struct store* new_kv = store_init();
-    new_kv->buckets = (struct value*)calloc(old_kv->store_size * 2, sizeof(struct value));
-    new_kv->store_size *= 2;
+    struct store* new_kv = _store_init(old_kv->store_size * 2);
     for (size_t i = 0; i < old_kv->store_size / 2; i++) {
-        struct value* current = &old_kv->buckets[i];
+        struct bucket* current = &old_kv->buckets[i];
         while (current->value != NULL) {
             store_insert(new_kv, current->key, current->value);
             current = current->next;
@@ -59,55 +72,66 @@ int _store_resize(struct store* old_kv)
     old_kv = new_kv;
     return 0;
 }
-
-int store_remove(struct store* kv, char* key)
+void _store_free_bucket(struct bucket* bucket, bool free_self)
+{
+    free(bucket->key->data);
+    free(bucket->value->data);
+    free(bucket->key);
+    free(bucket->value);
+    if (free_self)
+        free(bucket);
+}
+int store_remove(struct store* kv, struct container* key)
 {
     unsigned long hsh = _hash(key) % kv->store_size;
-    struct value* current = &kv->buckets[hsh];
-    struct value* last = current;
-    while (current && !(memcmp(current->key, key, DEFAULT_MEM_LIMIT) == 0)) {
+    struct bucket* current = &kv->buckets[hsh];
+    struct bucket* last = current;
+    while (current) {
+        if (key->size == current->key->size && memcmp(current->key->data, key->data, key->size) == 0) {
+            _store_free_bucket(current, false);
+            // we treat first item from linkedlist differently, cause we can't really free it
+            if (current == last) {
+                current->key = NULL;
+                current->value = NULL;
+                kv->buckets[hsh].next = current->next;
+            } else {
+                last->next = current->next;
+                free(current);
+            }
+            kv->count--;
+            return 0;
+        }
+
         last = current;
         current = current->next;
     }
-    if (current == NULL)
-        return INSERTERR;
-    free(current->key);
-    free(current->value);
-    if (current == last) {
-        current->key = NULL;
-        current->value = NULL;
-        kv->buckets[hsh].next = current->next;
-    } else {
-        last->next = current->next;
-        free(current);
-    }
-    kv->count--;
-    return 0;
+    return DELETEERR;
 }
-struct value* store_get(struct store* kv, char* key)
+
+struct bucket* store_get(struct store* kv, struct container* key)
 {
     unsigned long hsh = _hash(key) % kv->store_size;
-    struct value* current = &kv->buckets[hsh];
-    while (current && !memcmp(current->key, key, DEFAULT_MEM_LIMIT))
+    struct bucket* current = &kv->buckets[hsh];
+    while (current) {
+        if (key->size == current->key->size && memcmp(current->key->data, key->data, key->size) == 0) {
+            return current;
+        }
         current = current->next;
-    if (current == NULL)
-        return NULL;
-    else
-        return current;
+    }
+    return NULL;
 }
 int store_destroy(struct store* kv)
 {
-    struct value* tmp;
+    struct bucket* tmp;
+    struct bucket* next;
     for (size_t i = 0; i < kv->count; i++) {
-        if (kv->buckets[i].value != NULL) {
-            free(kv->buckets[i].value);
-        }
-        struct value* next = kv->buckets[i].next;
+        if (kv->buckets[i].value != NULL)
+            _store_free_bucket(&kv->buckets[i], false);
+        next = kv->buckets[i].next;
         while (next != NULL) {
             tmp = next;
-            free(next->value);
             next = next->next;
-            free(tmp);
+            _store_free_bucket(tmp, true);
         }
     }
     free(kv->buckets);
