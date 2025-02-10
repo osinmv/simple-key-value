@@ -6,4 +6,4 @@ clean:
 
 
 test: keyvalue.o *_test.c
-	gcc -fsanitize=address keyvalue.c keyvalue_test.c -o test && ./test
+	gcc -g -O0 -fsanitize=address keyvalue.c keyvalue_test.c -o test && ./test

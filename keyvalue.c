@@ -73,12 +73,14 @@ int _store_resize(struct store* kv)
     _store_init(kv, kv->store_size * 2);
     for (size_t i = 0; i < size; i++) {
         struct bucket* current = &buckets[i];
+        struct bucket* last = current;
         bool is_first = true;
-        while (current->value != NULL) {
+        while (current != NULL && current->value != NULL) {
             store_insert(kv, current->key, current->value);
             current = current->next;
-            _store_free_bucket(&buckets[i], !is_first);
+            _store_free_bucket(last, !is_first);
             is_first = false;
+            last = current;
         }
     }
     free(buckets);
