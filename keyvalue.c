@@ -3,17 +3,17 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct store* _store_init(int size)
+void _store_init(struct store* kv, int size)
 {
-    struct store* kv = (struct store*)calloc(1, sizeof(struct store));
     kv->store_size = size;
     kv->load_factor = DEFAULT_LOAD_FACTOR;
     kv->buckets = (struct bucket*)calloc(size, sizeof(struct bucket));
-    return kv;
 }
 struct store* store_init()
 {
-    return _store_init(DEFAULT_SIZE);
+    struct store* kv = (struct store*)calloc(1, sizeof(struct store));
+    _store_init(kv, DEFAULT_SIZE);
+    return kv;
 }
 // Djb2 hash function
 unsigned long _hash(struct container* key)
@@ -57,21 +57,6 @@ int store_insert(struct store* kv, struct container* key, struct container* valu
     kv->count++;
     return 0;
 }
-
-int _store_resize(struct store* old_kv)
-{
-    struct store* new_kv = _store_init(old_kv->store_size * 2);
-    for (size_t i = 0; i < old_kv->store_size / 2; i++) {
-        struct bucket* current = &old_kv->buckets[i];
-        while (current->value != NULL) {
-            store_insert(new_kv, current->key, current->value);
-            current = current->next;
-        }
-    }
-    store_destroy(old_kv);
-    old_kv = new_kv;
-    return 0;
-}
 void _store_free_bucket(struct bucket* bucket, bool free_self)
 {
     free(bucket->key->data);
@@ -80,6 +65,24 @@ void _store_free_bucket(struct bucket* bucket, bool free_self)
     free(bucket->value);
     if (free_self)
         free(bucket);
+}
+int _store_resize(struct store* kv)
+{
+    struct bucket* buckets = kv->buckets;
+    int size = kv->store_size;
+    _store_init(kv, kv->store_size * 2);
+    for (size_t i = 0; i < size; i++) {
+        struct bucket* current = &buckets[i];
+        bool is_first = true;
+        while (current->value != NULL) {
+            store_insert(kv, current->key, current->value);
+            current = current->next;
+            _store_free_bucket(&buckets[i], !is_first);
+            is_first = false;
+        }
+    }
+    free(buckets);
+    return 0;
 }
 int store_remove(struct store* kv, struct container* key)
 {
@@ -136,5 +139,5 @@ int store_destroy(struct store* kv)
     }
     free(kv->buckets);
     free(kv);
-    return 1;
+    return 0;
 }
