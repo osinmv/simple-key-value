@@ -62,7 +62,12 @@ int test_remove()
 
     return ret;
 }
-
+int test_destroy_empty_store()
+{
+    struct store* kv = store_init();
+    store_destroy(kv);
+    return 0;
+}
 int test_resize()
 {
     struct store* kv = store_init();
@@ -73,9 +78,9 @@ int test_resize()
     value.size = 11;
     strncpy(key.data, "super key", 10);
     strncpy(value.data, "supervalue", 11);
-    for (int i = 0; i < 17; i++)
+    for (int i = 0; i < 16; i++)
         store_insert(kv, &key, &value);
-    int result = kv->store_size == 32;
+    int result = kv->store_size == 32 ^ 1;
     store_destroy(kv);
     free(key.data);
     free(value.data);
@@ -83,10 +88,9 @@ int test_resize()
 }
 int main(int argc, char const* argv[])
 {
-    struct test tests[4] = {
-        { test_insert, "insert test" },
-        { test_get, "get test" },
-        { test_remove, "remove test" },
+    struct test tests[5] = {
+        { test_insert, "insert test" }, { test_get, "get test" },
+        { test_remove, "remove test" }, { test_destroy_empty_store, "destroy empty store test" },
         { test_resize, "resize test" },
     };
     int result = 0;

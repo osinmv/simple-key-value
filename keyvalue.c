@@ -8,6 +8,7 @@ void _store_init(struct store* kv, int size)
     kv->store_size = size;
     kv->load_factor = DEFAULT_LOAD_FACTOR;
     kv->buckets = (struct bucket*)calloc(size, sizeof(struct bucket));
+    kv->count = 0;
 }
 struct store* store_init()
 {
@@ -35,17 +36,16 @@ int store_insert(struct store* kv, struct container* key, struct container* valu
     }
     unsigned long hsh = _hash(key) % kv->store_size;
     struct bucket* bucket = &kv->buckets[hsh];
+    struct bucket* new;
     if (bucket->key != NULL) {
         while (bucket->next != NULL) {
             bucket = bucket->next;
         }
-    }
-    struct bucket* new;
-    if (bucket != &kv->buckets[hsh]) {
         new = (struct bucket*)calloc(1, sizeof(struct bucket));
         bucket->next = new;
-    } else
+    } else {
         new = &kv->buckets[hsh];
+    }
     new->key = (struct container*)calloc(1, sizeof(struct container));
     new->value = (struct container*)calloc(1, sizeof(struct container));
     new->key->data = (char*)calloc(1, key->size);
@@ -76,11 +76,11 @@ int _store_resize(struct store* kv)
         struct bucket* last = current;
         bool is_first = true;
         while (current != NULL && current->value != NULL) {
+            last = current;
             store_insert(kv, current->key, current->value);
             current = current->next;
             _store_free_bucket(last, !is_first);
             is_first = false;
-            last = current;
         }
     }
     free(buckets);
