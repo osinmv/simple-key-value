@@ -91,7 +91,7 @@ int store_remove(struct store* kv, struct container* key)
     unsigned long hsh = _hash(key) % kv->store_size;
     struct bucket* current = &kv->buckets[hsh];
     struct bucket* last = current;
-    while (current) {
+    while (current != NULL && current->key != NULL) {
         if (key->size == current->key->size && memcmp(current->key->data, key->data, key->size) == 0) {
             _store_free_bucket(current, false);
             // we treat first item from linkedlist differently, cause we can't really free it

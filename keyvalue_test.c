@@ -1,14 +1,15 @@
 #include "keyvalue.h"
+#include "stdbool.h"
 #include "stdio.h"
 #include "stdlib.h"
 #include "string.h"
 
 struct test {
-    int (*run_test)(void);
+    bool (*run_test)(void);
     char description[36];
 };
 
-int test_insert()
+bool test_insert()
 {
     struct store* kv = store_init();
     struct container key, value;
@@ -22,9 +23,9 @@ int test_insert()
     store_destroy(kv);
     free(key.data);
     free(value.data);
-    return 0;
+    return true;
 }
-int test_get()
+bool test_get()
 {
     struct store* kv = store_init();
     struct container key, value;
@@ -36,7 +37,7 @@ int test_get()
     strncpy(value.data, "supervalue", 11);
     store_insert(kv, &key, &value);
     struct bucket* result = store_get(kv, &key);
-    int ret = result != NULL && strncmp(value.data, result->value->data, value.size);
+    bool ret = result != NULL && strncmp(value.data, result->value->data, value.size) == 0;
     store_destroy(kv);
     free(key.data);
     free(value.data);
@@ -44,7 +45,7 @@ int test_get()
     return ret;
 }
 
-int test_remove()
+bool test_remove()
 {
     struct store* kv = store_init();
     struct container key, value;
@@ -60,15 +61,30 @@ int test_remove()
     free(key.data);
     free(value.data);
 
-    return ret;
+    return ret == 0;
 }
-int test_destroy_empty_store()
+
+bool test_remove_nonexistant()
+{
+    struct store* kv = store_init();
+    struct container key, value;
+    key.data = (char*)calloc(1, sizeof(char) * 10);
+    key.size = 10;
+    int ret = store_remove(kv, &key);
+    store_destroy(kv);
+    free(key.data);
+    free(value.data);
+
+    return ret == DELETEERR;
+}
+
+bool test_destroy_empty_store()
 {
     struct store* kv = store_init();
     store_destroy(kv);
-    return 0;
+    return true;
 }
-int test_resize()
+bool test_resize()
 {
     struct store* kv = store_init();
     struct container key, value;
@@ -80,7 +96,7 @@ int test_resize()
     strncpy(value.data, "supervalue", 11);
     for (int i = 0; i < 16; i++)
         store_insert(kv, &key, &value);
-    int result = kv->store_size == 32 ^ 1;
+    bool result = kv->store_size == 32;
     store_destroy(kv);
     free(key.data);
     free(value.data);
@@ -88,21 +104,20 @@ int test_resize()
 }
 int main(int argc, char const* argv[])
 {
-    struct test tests[5] = {
+    struct test tests[6] = {
         { test_insert, "insert test" }, { test_get, "get test" },
         { test_remove, "remove test" }, { test_destroy_empty_store, "destroy empty store test" },
-        { test_resize, "resize test" },
+        { test_resize, "resize test" }, { test_remove_nonexistant, "remove nonexistant test" },
     };
     int result = 0;
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
-        int test_result = tests[i].run_test();
-        if (test_result != 0) {
-            fprintf(stderr, "TEST FAIL: %s with error(%d)\n", tests[i].description, test_result);
-            result = 255;
-        } else {
+        bool test_succeed = tests[i].run_test();
+        if (test_succeed) {
             fprintf(stdout, "TEST SUCCESS: %s\n", tests[i].description);
+        } else {
+            fprintf(stderr, "TEST FAIL: %s\n", tests[i].description);
+            result = 255;
         }
     }
-
     return result;
 }
