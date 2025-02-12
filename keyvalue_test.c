@@ -19,11 +19,11 @@ bool test_insert()
     value.size = 11;
     strncpy(key.data, "super key", 10);
     strncpy(value.data, "supervalue", 11);
-    store_insert(kv, &key, &value);
+    int result = store_insert(kv, &key, &value);
     store_destroy(kv);
     free(key.data);
     free(value.data);
-    return true;
+    return result == OK;
 }
 bool test_get()
 {
@@ -56,12 +56,12 @@ bool test_remove()
     strncpy(key.data, "super key", 10);
     strncpy(value.data, "supervalue", 11);
     store_insert(kv, &key, &value);
-    int ret = store_remove(kv, &key);
+    int result = store_remove(kv, &key);
     store_destroy(kv);
     free(key.data);
     free(value.data);
 
-    return ret == 0;
+    return result == OK;
 }
 
 bool test_remove_nonexistant()

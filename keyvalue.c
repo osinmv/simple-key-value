@@ -1,19 +1,25 @@
 #include "keyvalue.h"
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-void _store_init(struct store* kv, int size)
+int _store_init(struct store* kv, int size)
 {
     kv->store_size = size;
     kv->load_factor = DEFAULT_LOAD_FACTOR;
     kv->buckets = (struct bucket*)calloc(size, sizeof(struct bucket));
+    if (kv->buckets == NULL) {
+        return MEMERR;
+    }
     kv->count = 0;
+    return OK;
 }
 struct store* store_init()
 {
     struct store* kv = (struct store*)calloc(1, sizeof(struct store));
-    _store_init(kv, DEFAULT_SIZE);
+    if (kv == NULL || _store_init(kv, DEFAULT_SIZE) != OK)
+        return NULL;
     return kv;
 }
 // Djb2 hash function
@@ -32,7 +38,8 @@ unsigned long _hash(struct container* key)
 int store_insert(struct store* kv, struct container* key, struct container* value)
 {
     if (kv->count * 100 / kv->store_size >= kv->load_factor) {
-        _store_resize(kv);
+        if (_store_resize(kv) != OK)
+            return RESIZEERR;
     }
     unsigned long hsh = _hash(key) % kv->store_size;
     struct bucket* bucket = &kv->buckets[hsh];
@@ -55,7 +62,7 @@ int store_insert(struct store* kv, struct container* key, struct container* valu
     memcpy(new->key->data, key->data, key->size);
     memcpy(new->value->data, value->data, value->size);
     kv->count++;
-    return 0;
+    return OK;
 }
 void _store_free_bucket(struct bucket* bucket, bool free_self)
 {
@@ -70,7 +77,11 @@ int _store_resize(struct store* kv)
 {
     struct bucket* buckets = kv->buckets;
     int size = kv->store_size;
-    _store_init(kv, kv->store_size * 2);
+    if (_store_init(kv, kv->store_size * 2) != OK) {
+        kv->buckets = buckets;
+        fprintf(stderr, "COULDN'T RESIZE, NOT ENOUGH MEMORY");
+        return RESIZEERR;
+    }
     for (size_t i = 0; i < size; i++) {
         struct bucket* current = &buckets[i];
         struct bucket* last = current;
@@ -84,7 +95,7 @@ int _store_resize(struct store* kv)
         }
     }
     free(buckets);
-    return 0;
+    return OK;
 }
 int store_remove(struct store* kv, struct container* key)
 {
@@ -104,7 +115,7 @@ int store_remove(struct store* kv, struct container* key)
                 free(current);
             }
             kv->count--;
-            return 0;
+            return OK;
         }
 
         last = current;
@@ -141,5 +152,5 @@ int store_destroy(struct store* kv)
     }
     free(kv->buckets);
     free(kv);
-    return 0;
+    return OK;
 }

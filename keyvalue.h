@@ -19,6 +19,7 @@ struct store {
 };
 
 enum STORE_ERROR {
+    OK = 1,
     MEMERR = -1,
     RESIZEERR = -2,
     INSERTERR = -3,
