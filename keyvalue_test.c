@@ -67,13 +67,13 @@ bool test_remove()
 bool test_remove_nonexistant()
 {
     struct store* kv = store_init();
-    struct container key, value;
+    struct container key;
     key.data = (char*)calloc(1, sizeof(char) * 10);
+    strncpy(key.data, "super key", 10);
     key.size = 10;
     int ret = store_remove(kv, &key);
     store_destroy(kv);
     free(key.data);
-    free(value.data);
 
     return ret == DELETEERR;
 }
