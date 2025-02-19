@@ -27,8 +27,9 @@ unsigned long _hash(struct container* key)
 {
     unsigned long hash = 5381;
     int c;
+    char* bytes = (char*)key->data;
     for (size_t i = 0; i < key->size; i++) {
-        c = key->data[i];
+        c = bytes[i];
         hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
     }
     return hash;
@@ -50,8 +51,8 @@ int store_insert(struct store* kv, struct container* key, struct container* valu
 
     node->key = (struct container*)calloc(1, sizeof(struct container));
     node->value = (struct container*)calloc(1, sizeof(struct container));
-    node->key->data = (char*)calloc(1, key->size);
-    node->value->data = (char*)calloc(1, value->size);
+    node->key->data = calloc(1, key->size);
+    node->value->data = calloc(1, value->size);
     node->key->size = key->size;
     node->value->size = value->size;
     memcpy(node->key->data, key->data, key->size);

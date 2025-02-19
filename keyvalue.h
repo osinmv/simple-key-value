@@ -6,6 +6,7 @@ struct bucket {
 };
 
 struct linked_keyvalue {
+    // data part of key is expected to be ascii string
     struct container* key;
     struct container* value;
     struct linked_keyvalue* next;
@@ -13,7 +14,7 @@ struct linked_keyvalue {
 
 struct container {
     int size;
-    char* data;
+    void* data;
 };
 struct store {
     struct bucket* buckets;
