@@ -36,7 +36,7 @@ bool test_get()
     strncpy(key.data, "super key", 10);
     strncpy(value.data, "supervalue", 11);
     store_insert(kv, &key, &value);
-    struct bucket* result = store_get(kv, &key);
+    struct linked_keyvalue* result = store_get(kv, &key);
     bool ret = result != NULL && strncmp(value.data, result->value->data, value.size) == 0;
     store_destroy(kv);
     free(key.data);
@@ -105,9 +105,12 @@ bool test_resize()
 int main(int argc, char const* argv[])
 {
     struct test tests[6] = {
-        { test_insert, "insert test" }, { test_get, "get test" },
-        { test_remove, "remove test" }, { test_destroy_empty_store, "destroy empty store test" },
-        { test_resize, "resize test" }, { test_remove_nonexistant, "remove nonexistant test" },
+        { test_insert, "insert test" },
+        { test_get, "get test" },
+        { test_remove, "remove test" },
+        { test_destroy_empty_store, "destroy empty store test" },
+        { test_resize, "resize test" },
+        { test_remove_nonexistant, "remove nonexistant test" },
     };
     int result = 0;
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {

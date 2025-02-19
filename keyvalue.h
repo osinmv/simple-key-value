@@ -2,9 +2,13 @@
 #define DEFAULT_LOAD_FACTOR 70
 #define DEFAULT_MEM_LIMIT 32
 struct bucket {
-    struct bucket* next;
-    struct container* value;
+    struct linked_keyvalue* root;
+};
+
+struct linked_keyvalue {
     struct container* key;
+    struct container* value;
+    struct linked_keyvalue* next;
 };
 
 struct container {
@@ -31,4 +35,4 @@ int store_insert(struct store* kv, struct container* key, struct container* valu
 int store_remove(struct store* kv, struct container* key);
 int store_destroy(struct store* kv);
 int _store_resize(struct store* old_kv);
-struct bucket* store_get(struct store* kv, struct container* key);
+struct linked_keyvalue* store_get(struct store* kv, struct container* key);

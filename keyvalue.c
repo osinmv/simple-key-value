@@ -43,35 +43,36 @@ int store_insert(struct store* kv, struct container* key, struct container* valu
     }
     unsigned long hsh = _hash(key) % kv->store_size;
     struct bucket* bucket = &kv->buckets[hsh];
-    struct bucket* new;
-    if (bucket->key != NULL) {
-        while (bucket->next != NULL) {
-            bucket = bucket->next;
-        }
-        new = (struct bucket*)calloc(1, sizeof(struct bucket));
-        bucket->next = new;
-    } else {
-        new = &kv->buckets[hsh];
-    }
-    new->key = (struct container*)calloc(1, sizeof(struct container));
-    new->value = (struct container*)calloc(1, sizeof(struct container));
-    new->key->data = (char*)calloc(1, key->size);
-    new->value->data = (char*)calloc(1, value->size);
-    new->key->size = key->size;
-    new->value->size = value->size;
-    memcpy(new->key->data, key->data, key->size);
-    memcpy(new->value->data, value->data, value->size);
+    struct linked_keyvalue* node = (struct linked_keyvalue*)calloc(1, sizeof(struct linked_keyvalue));
+
+    node->next = bucket->root;
+    bucket->root = node;
+
+    node->key = (struct container*)calloc(1, sizeof(struct container));
+    node->value = (struct container*)calloc(1, sizeof(struct container));
+    node->key->data = (char*)calloc(1, key->size);
+    node->value->data = (char*)calloc(1, value->size);
+    node->key->size = key->size;
+    node->value->size = value->size;
+    memcpy(node->key->data, key->data, key->size);
+    memcpy(node->value->data, value->data, value->size);
+
     kv->count++;
+
     return OK;
 }
-void _store_free_bucket(struct bucket* bucket, bool free_self)
+void _store_free_linked_keyvalue(struct linked_keyvalue* node)
 {
-    free(bucket->key->data);
-    free(bucket->value->data);
-    free(bucket->key);
-    free(bucket->value);
-    if (free_self)
-        free(bucket);
+    struct linked_keyvalue* last_node = node;
+    while (node != NULL) {
+        free(node->key->data);
+        free(node->value->data);
+        free(node->key);
+        free(node->value);
+        node = node->next;
+        free(last_node);
+        last_node = node;
+    }
 }
 int _store_resize(struct store* kv)
 {
@@ -83,16 +84,12 @@ int _store_resize(struct store* kv)
         return RESIZEERR;
     }
     for (size_t i = 0; i < size; i++) {
-        struct bucket* current = &buckets[i];
-        struct bucket* last = current;
-        bool is_first = true;
-        while (current != NULL && current->value != NULL) {
-            last = current;
-            store_insert(kv, current->key, current->value);
-            current = current->next;
-            _store_free_bucket(last, !is_first);
-            is_first = false;
+        struct linked_keyvalue* node = buckets[i].root;
+        while (node != NULL) {
+            store_insert(kv, node->key, node->value);
+            node = node->next;
         }
+        _store_free_linked_keyvalue(buckets[i].root);
     }
     free(buckets);
     return OK;
@@ -100,39 +97,31 @@ int _store_resize(struct store* kv)
 int store_remove(struct store* kv, struct container* key)
 {
     unsigned long hsh = _hash(key) % kv->store_size;
-    struct bucket* current = &kv->buckets[hsh];
-    struct bucket* last = current;
-    while (current != NULL && current->key != NULL) {
-        if (key->size == current->key->size && memcmp(current->key->data, key->data, key->size) == 0) {
-            _store_free_bucket(current, false);
-            // we treat first item from linkedlist differently, cause we can't really free it
-            if (current == last) {
-                current->key = NULL;
-                current->value = NULL;
-                kv->buckets[hsh].next = current->next;
-            } else {
-                last->next = current->next;
-                free(current);
-            }
+    struct linked_keyvalue* node = kv->buckets[hsh].root;
+    struct linked_keyvalue** last_node_address = &kv->buckets[hsh].root;
+    while (node != NULL) {
+        if (key->size == node->key->size && memcmp(node->key->data, key->data, key->size) == 0) {
+            *last_node_address = node->next;
+            node->next = NULL;
+            _store_free_linked_keyvalue(node);
             kv->count--;
             return OK;
         }
-
-        last = current;
-        current = current->next;
+        last_node_address = &node->next;
+        node = node->next;
     }
     return DELETEERR;
 }
 
-struct bucket* store_get(struct store* kv, struct container* key)
+struct linked_keyvalue* store_get(struct store* kv, struct container* key)
 {
     unsigned long hsh = _hash(key) % kv->store_size;
-    struct bucket* current = &kv->buckets[hsh];
-    while (current) {
-        if (key->size == current->key->size && memcmp(current->key->data, key->data, key->size) == 0) {
-            return current;
+    struct linked_keyvalue* node = kv->buckets[hsh].root;
+    while (node != NULL) {
+        if (key->size == node->key->size && memcmp(node->key->data, key->data, key->size) == 0) {
+            return node;
         }
-        current = current->next;
+        node = node->next;
     }
     return NULL;
 }
@@ -141,14 +130,8 @@ int store_destroy(struct store* kv)
     struct bucket* tmp;
     struct bucket* next;
     for (size_t i = 0; i < kv->store_size; i++) {
-        if (kv->buckets[i].value != NULL)
-            _store_free_bucket(&kv->buckets[i], false);
-        next = kv->buckets[i].next;
-        while (next != NULL) {
-            tmp = next;
-            next = next->next;
-            _store_free_bucket(tmp, true);
-        }
+        if (kv->buckets[i].root != NULL)
+            _store_free_linked_keyvalue(kv->buckets[i].root);
     }
     free(kv->buckets);
     free(kv);
