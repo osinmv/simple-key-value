@@ -28,7 +28,8 @@ enum STORE_ERROR {
     MEMERR = -1,
     RESIZEERR = -2,
     INSERTERR = -3,
-    DELETEERR = -4
+    DELETEERR = -4,
+    UPDATEERR = -5,
 };
 struct store* store_init();
 unsigned long _hash(struct container* key);
@@ -37,3 +38,4 @@ int store_remove(struct store* kv, struct container* key);
 int store_destroy(struct store* kv);
 int _store_resize(struct store* old_kv);
 struct linked_keyvalue* store_get(struct store* kv, struct container* key);
+int store_append(struct store* kv, struct container* key, struct container*value);

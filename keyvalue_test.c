@@ -15,10 +15,10 @@ bool test_insert()
     struct container key, value;
     key.data = (char*)calloc(1, sizeof(char) * 10);
     key.size = 10;
-    value.data = (char*)calloc(1, sizeof(char) * 11);
-    value.size = 11;
+    value.data = (char*)calloc(1, sizeof(char) * 10);
+    value.size = 10;
     strncpy(key.data, "super key", 10);
-    strncpy(value.data, "supervalue", 11);
+    strncpy(value.data, "supervalue", 10);
     int result = store_insert(kv, &key, &value);
     store_destroy(kv);
     free(key.data);
@@ -31,10 +31,10 @@ bool test_get()
     struct container key, value;
     key.data = (char*)calloc(1, sizeof(char) * 10);
     key.size = 10;
-    value.data = (char*)calloc(1, sizeof(char) * 11);
-    value.size = 11;
+    value.data = (char*)calloc(1, sizeof(char) * 10);
+    value.size = 10;
     strncpy(key.data, "super key", 10);
-    strncpy(value.data, "supervalue", 11);
+    strncpy(value.data, "supervalue", 10);
     store_insert(kv, &key, &value);
     struct linked_keyvalue* result = store_get(kv, &key);
     bool ret = result != NULL && strncmp(value.data, result->value->data, value.size) == 0;
@@ -51,10 +51,10 @@ bool test_remove()
     struct container key, value;
     key.data = (char*)calloc(1, sizeof(char) * 10);
     key.size = 10;
-    value.data = (char*)calloc(1, sizeof(char) * 11);
-    value.size = 11;
+    value.data = (char*)calloc(1, sizeof(char) * 10);
+    value.size = 10;
     strncpy(key.data, "super key", 10);
-    strncpy(value.data, "supervalue", 11);
+    strncpy(value.data, "supervalue", 10);
     store_insert(kv, &key, &value);
     int result = store_remove(kv, &key);
     store_destroy(kv);
@@ -103,12 +103,35 @@ bool test_resize()
     free(value.data);
     return result;
 }
+
+bool test_append()
+{
+    struct store* kv = store_init();
+    struct container key, value;
+    key.data = (char*)calloc(1, sizeof(char) * 10);
+    key.size = 10;
+    value.data = (char*)calloc(1, sizeof(char) * 10);
+    value.size = 10;
+    strncpy(key.data, "super key", 10);
+    strncpy(value.data, "supervalue", 10);
+    store_insert(kv, &key, &value);
+    store_append(kv, &key, &value);
+    struct linked_keyvalue* result = store_get(kv, &key);
+    bool ret = result != NULL && strncmp(result->value->data, "supervaluesupervalue", result->value->size) == 0;
+    store_destroy(kv);
+    free(key.data);
+    free(value.data);
+
+    return ret;
+}
+
 int main(int argc, char const* argv[])
 {
-    struct test tests[6] = {
+    struct test tests[7] = {
         { test_insert, "insert test" }, { test_get, "get test" },
         { test_remove, "remove test" }, { test_destroy_empty_store, "destroy empty store test" },
         { test_resize, "resize test" }, { test_remove_nonexistant, "remove nonexistant test" },
+        { test_append, "append test" },
     };
     int result = 0;
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
