@@ -35,12 +35,16 @@ unsigned long _hash(struct container* key)
     return hash;
 }
 
-// Assumed that bucket and key will not be freed by anybody else
+// Assumed that key and value will not be freed by anybody else
 int store_insert(struct store* kv, struct container* key, struct container* value)
 {
     if (kv->count * 100 / kv->store_size >= kv->load_factor) {
         if (_store_resize(kv) != OK)
             return RESIZEERR;
+    }
+    struct linked_keyvalue* duplicate = store_get(kv, key);
+    if (duplicate != NULL) {
+        return INSERTERR;
     }
     unsigned long hsh = _hash(key) % kv->store_size;
     struct bucket* bucket = &kv->buckets[hsh];

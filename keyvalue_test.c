@@ -88,14 +88,15 @@ bool test_resize()
 {
     struct store* kv = store_init();
     struct container key, value;
-    key.data = (char*)calloc(1, sizeof(char) * 10);
-    key.size = 10;
-    value.data = (char*)calloc(1, sizeof(char) * 11);
-    value.size = 11;
-    strncpy(key.data, "super key", 10);
-    strncpy(value.data, "supervalue", 11);
-    for (int i = 0; i < 16; i++)
+    key.data = calloc(1, sizeof(int));
+    key.size = sizeof(int);
+    value.data = calloc(1, sizeof(int));
+    value.size = sizeof(int);
+    for (int i = 0; i < 16; i++) {
+        memcpy(key.data, &i, sizeof(int));
+        memcpy(value.data, &i, sizeof(int));
         store_insert(kv, &key, &value);
+    }
     bool result = kv->store_size == 32;
     store_destroy(kv);
     free(key.data);
@@ -105,12 +106,9 @@ bool test_resize()
 int main(int argc, char const* argv[])
 {
     struct test tests[6] = {
-        { test_insert, "insert test" },
-        { test_get, "get test" },
-        { test_remove, "remove test" },
-        { test_destroy_empty_store, "destroy empty store test" },
-        { test_resize, "resize test" },
-        { test_remove_nonexistant, "remove nonexistant test" },
+        { test_insert, "insert test" }, { test_get, "get test" },
+        { test_remove, "remove test" }, { test_destroy_empty_store, "destroy empty store test" },
+        { test_resize, "resize test" }, { test_remove_nonexistant, "remove nonexistant test" },
     };
     int result = 0;
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
