@@ -142,21 +142,6 @@ int _store_resize(struct store* kv)
     return OK;
 }
 
-int store_append(struct store* kv, struct container* key, struct container* value)
-{
-    struct linked_keyvalue* node = store_get(kv, key);
-    if (node == NULL || value->size + node->value->size < 1)
-        return UPDATEERR;
-    void* new_data_pointer = realloc(node->value->data, node->value->size + value->size);
-    if (new_data_pointer == NULL)
-        return MEMERR;
-    if (value->size > 0)
-        memcpy(new_data_pointer + node->value->size, value->data, value->size);
-    node->value->data = new_data_pointer;
-    node->value->size = node->value->size + value->size;
-    return OK;
-}
-
 int store_remove(struct store* kv, struct container* key)
 {
     unsigned long hsh = _hash(key) % kv->store_size;
