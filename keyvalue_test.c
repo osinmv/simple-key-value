@@ -128,9 +128,12 @@ bool test_append()
 int main(int argc, char const* argv[])
 {
     struct test tests[7] = {
-        { test_insert, "insert test" }, { test_get, "get test" },
-        { test_remove, "remove test" }, { test_destroy_empty_store, "destroy empty store test" },
-        { test_resize, "resize test" }, { test_remove_nonexistant, "remove nonexistant test" },
+        { test_insert, "insert test" },
+        { test_get, "get test" },
+        { test_remove, "remove test" },
+        { test_destroy_empty_store, "destroy empty store test" },
+        { test_resize, "resize test" },
+        { test_remove_nonexistant, "remove nonexistant test" },
         { test_append, "append test" },
     };
     int result = 0;
