@@ -6,7 +6,7 @@
 #include <string.h>
 #define DEFAULT_SIZE 16
 #define DEFAULT_LOAD_FACTOR 70
-#define DEFAULT_MEM_LIMIT 32
+#define MAX_STR_LEN 64
 
 struct bucket {
     struct linked_keyvalue* root;
@@ -38,6 +38,7 @@ enum STORE_ERROR {
     INSERTERR = -3,
     DELETEERR = -4,
     UPDATEERR = -5,
+    KEYERR = -6,
 };
 
 int _store_init(struct store* kv, int size)
@@ -75,12 +76,12 @@ void _store_free_linked_keyvalue(struct linked_keyvalue* node)
 }
 
 // Djb2 hash function
-unsigned long _hash(struct container* key)
+unsigned long _hash(char* key, int len)
 {
     unsigned long hash = 5381;
     int c;
-    char* bytes = (char*)key->data;
-    for (size_t i = 0; i < key->size; i++) {
+    char* bytes = key;
+    for (size_t i = 0; i < len; i++) {
         c = bytes[i];
         hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
     }
@@ -88,20 +89,19 @@ unsigned long _hash(struct container* key)
 }
 
 int _store_resize(struct store* kv);
-struct linked_keyvalue* store_get(struct store* kv, struct container* key);
+struct linked_keyvalue* store_get(struct store* kv, char* key);
 
-// Assumed that key and value will not be freed by anybody else
-int store_insert(struct store* kv, struct container* key, struct container* value)
+int _store_insert(struct store* kv, struct container* key, struct container* value)
 {
     if (kv->count * 100 / kv->store_size >= kv->load_factor) {
         if (_store_resize(kv) != OK)
             return RESIZEERR;
     }
-    struct linked_keyvalue* duplicate = store_get(kv, key);
+    struct linked_keyvalue* duplicate = store_get(kv, key->data);
     if (duplicate != NULL) {
         return INSERTERR;
     }
-    unsigned long hsh = _hash(key) % kv->store_size;
+    unsigned long hsh = _hash(key->data, key->size) % kv->store_size;
     struct bucket* bucket = &kv->buckets[hsh];
     struct linked_keyvalue* node = (struct linked_keyvalue*)calloc(1, sizeof(struct linked_keyvalue));
 
@@ -121,6 +121,24 @@ int store_insert(struct store* kv, struct container* key, struct container* valu
 
     return OK;
 }
+int _get_keylen(char* key)
+{
+    int key_size = strnlen(key, MAX_STR_LEN);
+    if (key_size == MAX_STR_LEN)
+        return KEYERR;
+    return key_size + 1;
+}
+
+int store_insert(struct store* kv, char* key, void* value, int value_size)
+{
+    int key_size = _get_keylen(key);
+    if (key_size == KEYERR)
+        return INSERTERR;
+    struct container key_container = { .data = key, .size = key_size };
+    struct container value_container = { .data = value, .size = value_size };
+    return _store_insert(kv, &key_container, &value_container);
+}
+
 int _store_resize(struct store* kv)
 {
     struct bucket* buckets = kv->buckets;
@@ -133,7 +151,7 @@ int _store_resize(struct store* kv)
     for (size_t i = 0; i < size; i++) {
         struct linked_keyvalue* node = buckets[i].root;
         while (node != NULL) {
-            store_insert(kv, node->key, node->value);
+            _store_insert(kv, node->key, node->value);
             node = node->next;
         }
         _store_free_linked_keyvalue(buckets[i].root);
@@ -142,13 +160,16 @@ int _store_resize(struct store* kv)
     return OK;
 }
 
-int store_remove(struct store* kv, struct container* key)
+int store_remove(struct store* kv, char* key)
 {
-    unsigned long hsh = _hash(key) % kv->store_size;
+    int key_size = _get_keylen(key);
+    if (key_size == KEYERR)
+        return DELETEERR;
+    unsigned long hsh = _hash(key, key_size) % kv->store_size;
     struct linked_keyvalue* node = kv->buckets[hsh].root;
     struct linked_keyvalue** last_node_address = &kv->buckets[hsh].root;
     while (node != NULL) {
-        if (key->size == node->key->size && memcmp(node->key->data, key->data, key->size) == 0) {
+        if (key_size == node->key->size && memcmp(node->key->data, key, key_size) == 0) {
             *last_node_address = node->next;
             node->next = NULL;
             _store_free_linked_keyvalue(node);
@@ -161,12 +182,15 @@ int store_remove(struct store* kv, struct container* key)
     return DELETEERR;
 }
 
-struct linked_keyvalue* store_get(struct store* kv, struct container* key)
+struct linked_keyvalue* store_get(struct store* kv, char* key)
 {
-    unsigned long hsh = _hash(key) % kv->store_size;
+    int key_size = _get_keylen(key);
+    if (key_size == KEYERR)
+        return NULL;
+    unsigned long hsh = _hash(key, key_size) % kv->store_size;
     struct linked_keyvalue* node = kv->buckets[hsh].root;
     while (node != NULL) {
-        if (key->size == node->key->size && memcmp(node->key->data, key->data, key->size) == 0) {
+        if (key_size == node->key->size && memcmp(node->key->data, key, key_size) == 0) {
             return node;
         }
         node = node->next;
