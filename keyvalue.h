@@ -19,6 +19,12 @@ struct linked_keyvalue {
     struct linked_keyvalue* next;
 };
 
+struct keyvalue {
+    char* key;
+    void* value;
+    int value_size;
+};
+
 struct container {
     int size;
     void* data;
@@ -75,6 +81,13 @@ void _store_free_linked_keyvalue(struct linked_keyvalue* node)
     }
 }
 
+void free_container(struct container* cont)
+{
+    if (cont) {
+        free(cont->data);
+        free(cont);
+    }
+}
 // Djb2 hash function
 unsigned long _hash(char* key, int len)
 {
@@ -89,7 +102,7 @@ unsigned long _hash(char* key, int len)
 }
 
 int _store_resize(struct store* kv);
-struct linked_keyvalue* store_get(struct store* kv, char* key);
+struct container* store_get(struct store* kv, char* key);
 
 int _store_insert(struct store* kv, struct container* key, struct container* value)
 {
@@ -97,7 +110,7 @@ int _store_insert(struct store* kv, struct container* key, struct container* val
         if (_store_resize(kv) != OK)
             return RESIZEERR;
     }
-    struct linked_keyvalue* duplicate = store_get(kv, key->data);
+    struct container* duplicate = store_get(kv, key->data);
     if (duplicate != NULL) {
         return INSERTERR;
     }
@@ -182,8 +195,9 @@ int store_remove(struct store* kv, char* key)
     return DELETEERR;
 }
 
-struct linked_keyvalue* store_get(struct store* kv, char* key)
+struct container* store_get(struct store* kv, char* key)
 {
+
     int key_size = _get_keylen(key);
     if (key_size == KEYERR)
         return NULL;
@@ -191,7 +205,11 @@ struct linked_keyvalue* store_get(struct store* kv, char* key)
     struct linked_keyvalue* node = kv->buckets[hsh].root;
     while (node != NULL) {
         if (key_size == node->key->size && memcmp(node->key->data, key, key_size) == 0) {
-            return node;
+            struct container* result = (struct container*)malloc(sizeof(struct container));
+            result->data = malloc(node->value->size);
+            memcpy(result->data, node->value->data, node->value->size);
+            result->size = node->value->size;
+            return result;
         }
         node = node->next;
     }

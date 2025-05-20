@@ -21,8 +21,9 @@ bool test_get()
 {
     struct store* kv = store_init();
     store_insert(kv, "super key", "super value", strlen("super value") + 1);
-    struct linked_keyvalue* result = store_get(kv, "super key");
-    bool ret = result != NULL && strncmp("super value", result->value->data, strlen("super value") + 1) == 0;
+    struct container* result = store_get(kv, "super key");
+    bool ret = result != NULL && strncmp("super value", result->data, strlen("super value") + 1) == 0;
+    free_container(result);
     store_destroy(kv);
     return ret;
 }
