@@ -1,5 +1,5 @@
-#ifndef KYEVALUELIB_H
-#define KYEVALUELIB_H
+#ifndef KEYVALUELIB_H
+#define KEYVALUELIB_H
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
